@@ -11,4 +11,4 @@ The only difference from between this drawing and the actual setup that I have b
 
 ![](https://imgur.com/yPHuypg.png)
 
-Here's a playlist where I explain the setup and show examples of its functioning: https://www.youtube.com/watch?v=OK37mIi7nd8
+Here's a playlist where I explain the setup and show examples of its functioning: https://www.youtube.com/playlist?list=PLgduvfqJa2lOS8xUoFPziR5fBI0N4Owao
