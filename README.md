@@ -1,6 +1,6 @@
 # BioData-Exploration
 
-This is repository holds the documentation of the BioData Exploration with arduino.
+This is repository holds the documentation of the BioData Exploration with arduino. Code and data samples are provided in the respective folders.
 
 ## Arduino Setup
 
