@@ -1,12 +1,12 @@
 # BioData-Exploration
 
-This is repository holds the documentation of the BioData Exploration with arduino. Code and data samples are provided in the respective folders.
+This repository holds the documentation of the BioData Exploration with arduino. Code and data samples are provided in the respective folders.
 
 ## Arduino Setup
 
 Here's a picture of the initial circuit used for the collection of the data in this exploration. It has been inspired by [this project](https://www.youtube.com/watch?v=8ogMm94AH80) by Build It.
 
-The only difference between this drawing and the actual setup that I have been using is that I have an Arduino Uno, instead of an Arduino Nano. But for the purpose of this project that doesn't change anything.
+The only difference between this drawing and the actual setup that I have been using is that I have an Arduino Uno, instead of an Arduino Nano. But for the purpose of this project that doesn't change anything. You can use any arduino board.
 
 ![](https://imgur.com/yPHuypg.png)
 
