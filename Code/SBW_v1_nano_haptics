@@ -1,0 +1,262 @@
+#include <LiquidCrystal_I2C.h>      //LCD library
+#include <IRremote.h>               //remote library
+LiquidCrystal_I2C lcd(0x27, 16, 4); //LCD
+
+// Remote
+
+#define RECEIVER_PIN 2 // define the IR receiver pin
+IRrecv receiver(RECEIVER_PIN); // create a receiver object of the IRrecv class
+decode_results results; // create a results object of the decode_results class
+
+//Haptic
+
+#include <Wire.h>
+#include "Adafruit_DRV2605.h"
+
+Adafruit_DRV2605 drv;
+
+//Pinagem
+
+//Inputs
+
+int pinoBuzzer = 3;
+int pinoIR = 2;
+int pinoRLED = 10;
+int pinoGLED = 11;
+int pinoBLED = 12;
+int pinAicu = A7; // electric activity sensor (pull-down 10k resistor and 5v)
+int pinAAjuste = A0;
+int PulseSensorPurplePin = A1; // pulseSensor
+unsigned long key_value = 0; 
+
+//controlers 
+int playing = 0;
+int luz = 0;
+int haptics = 0;
+int pulse = 0;
+int ajuste = 0;
+int sync = 0;
+
+//parameters
+int bpm = 500;
+int teto = bpm;
+int chao = 0;
+int LED13 = 13;   //  The on-board Arduion LED
+int coracao;                // holds the incoming raw data. Signal value can range from 0-1024
+int Threshold = 500; //controlar no remoto            // Determine which Signal to "count as a beat", and which to ingore.
+
+
+void setup() {
+  pinMode (pinoBuzzer, OUTPUT); // buzzer
+  pinMode (pinoIR, INPUT_PULLUP); // buzzer button
+  pinMode (pinAicu, INPUT); // ICU analog interface
+  pinMode (pinAAjuste, INPUT); // Potentiometer
+  pinMode (PulseSensorPurplePin, INPUT); // pulseSensor
+  pinMode (pinoRLED, OUTPUT);
+  pinMode (pinoBLED, OUTPUT); 
+  pinMode (pinoGLED, OUTPUT); 
+  lcd.init();
+  lcd.backlight();
+  lcd.setCursor(1, 0);
+  lcd.print("Iniciado");
+  
+  receiver.enableIRIn(); // enable the receiver
+  receiver.blink13(true); // enable blinking of the built-in LED when an IR signal is received
+
+  drv.begin();
+  drv.selectLibrary(1);
+  // I2C trigger by sending 'go' command 
+  // default, internal trigger when sending GO command
+  drv.setMode(DRV2605_MODE_INTTRIG); 
+  
+  Serial.begin(9600);
+}
+
+void loop ()
+{  
+// InterComUnit
+  // Sinais
+  int sinalpuro = analogRead(pinAicu);
+  int escala = analogRead(pinAAjuste);
+  int meio = ((teto-chao)/2) + chao;
+  int sinalamplificado = map(sinalpuro, chao, teto, 200, 500);
+  int coracao = analogRead(PulseSensorPurplePin);  // Read the PulseSensor's value.
+  if (sinalpuro == 0) {
+    noTone(pinoBuzzer);
+  }
+
+//  LCD
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("S:");
+  lcd.print(sinalpuro, 1);
+  lcd.print(",P:");
+  lcd.print(coracao, 1);
+  lcd.setCursor(0,1);
+  lcd.print("E:");
+  lcd.print(escala);
+  lcd.print(",M:");
+  lcd.print(meio);
+  lcd.print(",A:");
+  lcd.print(sinalamplificado);
+
+//  Play
+
+  ///sound
+if (playing == 1) {
+  tone(pinoBuzzer, sinalamplificado);
+}
+
+  ///light
+if (luz == 1) {
+  if (sinalpuro > meio){
+    digitalWrite(pinoGLED, HIGH);
+    delay (bpm/10);
+    digitalWrite(pinoGLED, LOW);
+  }
+}
+
+  ///haptics
+if (haptics == 1) {
+  if (sinalpuro > meio){
+    // set the effect to play
+    drv.setWaveform(0, 14);  // play effect 
+    drv.setWaveform(1, 0);       // end waveform
+    // play the effect!
+    drv.go();
+  }
+}
+
+  ///pulsesensor
+if (pulse == 1) {  
+   if(coracao > Threshold){                          // If the signal is above "550", then "turn-on" Arduino's on-Board LED.
+     digitalWrite(pinoRLED, HIGH);
+     delay (bpm/10);
+     digitalWrite(pinoRLED, LOW);
+    }
+}
+
+  ///sync
+if (sync == 1) {
+  bpm = coracao;
+}
+
+  ///noLCD
+if (ajuste == 1) {
+   if(sinalpuro > escala){                          // If the signal is above "550", then "turn-on" Arduino's on-Board LED.
+     digitalWrite(pinoBLED,HIGH);
+   } else {
+     digitalWrite(pinoBLED,LOW);                //  Else, the sigal must be below "550", so "turn-off" this LED.
+   }
+}
+
+  // Buttons
+if (receiver.decode(&results)) { // decode the received signal and store it in results
+    if (results.value == 0xFFFFFFFF) { // if the value is equal to 0xFFFFFFFF
+      results.value = key_value; // set the value to the key value
+      //Serial.println (key_value);
+    }
+    switch (results.value) { // compare the value to the following cases
+      
+      // stop all
+      case 0xF740BF:
+        noTone(pinoBuzzer);
+        digitalWrite(pinoBLED, LOW);
+        playing = 0;
+        haptics = 0;
+        pulse = 0;
+        ajuste = 0;
+        luz = 0;
+        break;
+
+      // define delay = escala
+      case 0xF7E01F:
+        bpm = escala;
+        break;
+
+      // definir teto  
+      case 0xF700FF:
+        teto = escala;
+        break;
+
+      // definir chao  
+      case 0xF7807F:
+        chao = escala;
+        break;
+
+      // on/off sound
+      case 0xF7C03F: // if the value is equal to 0xFD00FF
+        if (playing == 0) {
+          playing = 1;
+        }else {
+          playing = 0;
+          }
+        break;
+      
+      //on/off haptics
+      case 0xF7D02F: // if the value is equal to flash
+        if (haptics == 0) {
+          haptics = 1;
+        }else {
+          haptics = 0;
+          }
+        break;
+
+      //on/off pulse  
+      case 0xF720DF:
+        if (pulse == 0) {
+          pulse = 1;
+        }else {
+          pulse = 0;
+          }
+        break;
+
+      ///threshold = escala
+      case 0xF728D7:
+        Threshold = escala;
+        break;
+
+      ///bpm = pulse
+      case 0xF710EF: // pulse bpm (delay)
+        if (sync == 0) {
+          sync = 1;
+        }else {
+          sync = 0;
+          }
+        break;
+
+      //on/off ajuste
+      case 0xF7609F:
+        if (ajuste == 0) {
+          ajuste = 1;
+        }else {
+          ajuste = 0;
+          }
+        break;
+
+      //on/off luz
+      case 0xF7A05F:
+        if (luz == 0) {
+          luz = 1;
+        }else {
+          luz = 0;
+          }
+        break;
+    }
+    key_value = results.value; // store the value as key_value
+    receiver.resume(); // reset the receiver for the next code
+  }
+
+    //Debug
+
+//Serial.println(sinalpuro);
+//Serial.println(escala);
+//Serial.println(bpm);
+//Serial.println(luz);
+//Serial.println(sinalamplificado);
+//analogWrite(pinoGLED, random (0, sinalLED));
+//analogWrite(pinoRLED, random (0, sinalLED));
+//analogWrite(pinoBLED, random (0, sinalLED));
+
+delay (bpm);
+}
